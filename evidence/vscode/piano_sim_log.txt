@@ -1,0 +1,9 @@
+﻿# piano simulation log
+# date: 2026-10-18 00:58:27
+# tool: Icarus Verilog version 12.0 (devel) (s20150603-1539-g2693dd32b)
+# command: run_sim.bat piano
+=== iverilog compile: piano ===
+=== vvp run ===
+VCD info: dumpfile piano.vcd opened for output.
+PASS piano: all 8 tones, silence, multiple keys, reset
+tb_piano.sv:40: $finish called at 4796000 (1ps)

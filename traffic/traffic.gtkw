@@ -1,0 +1,18 @@
+[dumpfile] "traffic.vcd"
+[timestart] 0
+[size] 1400 600
+@28
+tb.clk
+tb.rst
+tb.flicker
+tb.dut.tick
+tb.dut.blink
+@24
+tb.dut.direction[1:0]
+tb.dut.phase[3:0]
+@22
+tb.red[3:0]
+tb.yellow[3:0]
+tb.green[3:0]
+tb.wr[3:0]
+tb.wg[3:0]

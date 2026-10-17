@@ -1,0 +1,9 @@
+# 시뮬레이션 빌드 산출물 (run_sim.bat 실행 시 다시 생성됨)
+*.vvp
+*.vcd
+*.exe
+
+# Vivado 프로젝트·빌드 산출물
+/vivado/
+.Xil/
+*.jou

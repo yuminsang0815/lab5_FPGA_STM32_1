@@ -1,0 +1,13 @@
+[dumpfile] "piano.vcd"
+[timestart] 0
+[size] 1400 600
+@28
+tb.clk
+tb.rst
+@22
+tb.key[7:0]
+@24
+tb.dut.frequency_hz[31:0]
+tb.dut.u_tone.half_cycles[31:0]
+@28
+tb.piezo

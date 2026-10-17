@@ -1,0 +1,23 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "SIM: 피아노 (piano)",
+            "type": "process",
+            "command": "cmd.exe",
+            "args": ["/d", "/c", "run_sim.bat", "piano", "wave"],
+            "options": { "cwd": "${workspaceFolder}" },
+            "group": "test",
+            "problemMatcher": []
+        },
+        {
+            "label": "SIM: 신호등 제어 (traffic)",
+            "type": "process",
+            "command": "cmd.exe",
+            "args": ["/d", "/c", "run_sim.bat", "traffic", "wave"],
+            "options": { "cwd": "${workspaceFolder}" },
+            "group": "test",
+            "problemMatcher": []
+        }
+    ]
+}

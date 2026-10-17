@@ -1,0 +1,9 @@
+﻿# traffic simulation log
+# date: 2026-10-18 00:58:27
+# tool: Icarus Verilog version 12.0 (devel) (s20150603-1539-g2693dd32b)
+# command: run_sim.bat traffic
+=== iverilog compile: traffic ===
+=== vvp run ===
+VCD info: dumpfile traffic.vcd opened for output.
+PASS traffic: full cycle, pedestrian blink, flicker, reset
+tb_traffic.sv:48: $finish called at 2186000 (1ps)
