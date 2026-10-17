@@ -1,0 +1,9 @@
+﻿# adc simulation log
+# date: 2026-10-18 01:09:45
+# tool: Icarus Verilog version 12.0 (devel) (s20150603-1539-g2693dd32b)
+# command: run_sim.bat adc
+=== iverilog compile: adc ===
+=== vvp run ===
+VCD info: dumpfile adc.vcd opened for output.
+PASS ADC: 3 serial frames, command bits, sample, reset
+tb_adc.sv:46: $finish called at 2016000 (1ps)

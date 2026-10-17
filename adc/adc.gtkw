@@ -1,0 +1,24 @@
+[dumpfile] "adc.vcd"
+[timestart] 0
+[size] 1400 600
+@28
+tb.clk
+tb.rst
+@24
+tb.channel[2:0]
+@22
+tb.dut.command[15:0]
+@28
+tb.cs_n
+tb.sclk
+tb.mosi
+tb.miso
+@24
+tb.dut.u_serial.bit_index[4:0]
+@22
+tb.received_command[15:0]
+@28
+tb.valid
+@22
+tb.sample[11:0]
+tb.led[7:0]

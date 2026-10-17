@@ -2,7 +2,7 @@
 rem Usage: run_sim.bat piano      (simulate only)
 rem        run_sim.bat traffic wave (simulate + open GTKWave)
 if "%~1"=="" (
-    echo Usage: run_sim.bat [piano^|traffic] [wave]
+    echo Usage: run_sim.bat [piano^|traffic^|adc] [wave]
     exit /b 1
 )
 cd /d "%~dp0%~1" || exit /b 1

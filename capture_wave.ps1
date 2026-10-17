@@ -25,7 +25,9 @@ $shots = @(
     @{ name = 'piano_wave_full';    dir = 'piano';   range = $null },
     @{ name = 'piano_wave_zoom';    dir = 'piano';   range = @(0, 1700000) },     # 도(262 Hz) → 레(294 Hz)
     @{ name = 'traffic_wave_full';  dir = 'traffic'; range = $null },
-    @{ name = 'traffic_wave_zoom';  dir = 'traffic'; range = @(0, 600000) }      # direction 0의 13단계
+    @{ name = 'traffic_wave_zoom';  dir = 'traffic'; range = @(0, 600000) },     # direction 0의 13단계
+    @{ name = 'adc_wave_full';      dir = 'adc';     range = $null },
+    @{ name = 'adc_wave_zoom';      dir = 'adc';     range = @(0, 720000) }      # 첫 프레임 (channel 2)
 )
 
 foreach ($s in $shots) {
