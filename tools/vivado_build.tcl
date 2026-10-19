@@ -16,7 +16,9 @@ create_project $name [file join $root vivado $name] -part $part -force
 
 # 설계 소스와 최상위 모듈
 add_files -norecurse [glob [file join $root $name *.v]]
-set_property top $name [get_filesets sources_1]
+# 보드용 최상위: ADC는 sample·data_valid를 내부에 두는 adc_board 사용
+set top [expr {$name eq "adc" ? "adc_board" : $name}]
+set_property top $top [get_filesets sources_1]
 
 # 시뮬레이션 소스 (SystemVerilog 테스트벤치, 최상위 tb)
 add_files -fileset sim_1 -norecurse [glob [file join $root $name tb_*.sv]]
@@ -50,6 +52,6 @@ launch_runs impl_1 -to_step write_bitstream -jobs 4
 wait_on_run impl_1
 if {[get_property PROGRESS [get_runs impl_1]] ne "100%"} { error "implementation failed" }
 
-set bit [file join $root vivado $name $name.runs impl_1 $name.bit]
+set bit [file join $root vivado $name $name.runs impl_1 $top.bit]
 puts "BITSTREAM_OK $bit"
 close_project

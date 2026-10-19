@@ -24,6 +24,8 @@ VS Code: `Ctrl+Shift+P` → `Tasks: Run Task` → `SIM: ...`
 
 ```
 vivado -mode batch -source tools/vivado_build.tcl -tclargs piano
+vivado -mode batch -source tools/vivado_build.tcl -tclargs traffic
+vivado -mode batch -source tools/vivado_build.tcl -tclargs adc
 ```
 
-결과 프로젝트 `vivado/<설계>/<설계>.xpr`를 GUI로 열고 Open Hardware Manager → Program Device로 `vivado/<설계>/<설계>.runs/impl_1/<설계>.bit`를 다운로드한다. 핀 제약은 [constraints/](constraints/).
+결과 프로젝트 `vivado/<설계>/<설계>.xpr`를 GUI로 열고 Open Hardware Manager → Program Device로 `vivado/<설계>/<설계>.runs/impl_1/<최상위>.bit`(ADC는 `adc_board.bit`)를 다운로드한다. 핀 제약은 [constraints/](constraints/).

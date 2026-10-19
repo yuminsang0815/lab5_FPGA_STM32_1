@@ -8,7 +8,7 @@
 STM32_1 주차의 FPGA 교재 실습으로, 50 MHz 클록에 동기화된 세 개의 순차회로를 설계하고 검증한다.
 - **피아노(`piano`)**: 8개의 키 입력 중 하나가 눌리면 해당 음(도~높은 도)의 주파수를 가진 50% 듀티 사각파를 피에조로 출력한다. `note_select`가 키를 주파수로 바꾸고, `square_tone`이 주파수에 맞는 반주기마다 출력을 반전한다.
 - **신호등 제어(`traffic`)**: 네 방향 교차로의 차량 신호(빨강·노랑·초록·좌회전)와 보행자 신호(빨강·초록)를 1초 단위로 제어한다. `second_tick`이 1초 tick과 0.5초 점멸 신호를, `traffic_sequence`가 방향과 단계를, `traffic_lights`가 LED 출력을 만든다.
-- **ADC(`adc`)**: FPGA가 보드의 외부 8채널 12비트 직렬 ADC에 16비트 명령을 보내 채널을 고르고, 같은 프레임에서 변환 결과 16비트를 받아 하위 12비트를 `sample`로 저장한다. `adc_command`가 채널 선택 명령을, `serial_frame16`이 SPI 형식의 16비트 송수신(SCLK·CS·DIN·DOUT)을 담당하며, `sample`의 상위 8비트를 LED에 표시한다. STM32의 ADC가 아니라 FPGA가 외부 변환 장치를 제어하는 실습이다.
+- **ADC(`adc`)**: FPGA가 보드의 외부 8채널 직렬 ADC(AD7908, 8비트)에 16비트 명령을 보내 채널을 고르고, 같은 프레임에서 변환 결과 16비트를 받아 하위 12비트를 `sample`로 저장한다. `adc_command`가 채널 선택 명령을, `serial_frame16`이 SPI 형식의 16비트 송수신(SCLK·CS·DIN·DOUT)을 담당하며, `sample`의 상위 8비트를 LED에 표시한다. STM32의 ADC가 아니라 FPGA가 외부 변환 장치를 제어하는 실습이다.
 
 세 설계 모두 느린 동작을 새 클록으로 만들지 않고, 50 MHz 클록 안에서 카운터와 한 클록 길이의 tick으로 처리한다. 이번 레포트는 Icarus Verilog 시뮬레이션으로 기능을 먼저 확인하고, 보드 시연은 5장의 계획에 따라 실험 시간에 수행한다.
 
@@ -61,7 +61,8 @@ STM32_1 주차의 FPGA 교재 실습으로, 50 MHz 클록에 동기화된 세 �
 5. **ADC 명령 워드 (`adc_command`)**:
    - `command = {3'b101, channel, 2'b11, 1'b0, 3'b111, 4'b0000}` — 원본 예제의 쓰기(WRITE)·순차(SEQ)·채널 주소(ADD2~0)·전원 모드(PM1·PM0)·범위(RANGE)·코딩(CODING) 비트 배치를 유지한다.
    - 채널 값이 비트 [12:10]에 들어가므로 `command = 16'hA370 | (channel << 10)`이다. 예: channel 2 → `16'hAB70`, channel 5 → `16'hB770`, channel 7 → `16'hBF70`.
-   - 수신 워드의 하위 12비트가 변환 결과이므로 $0 \sim 4095$ 범위이고, LED에는 상위 8비트 `sample[11:4]`(0~255)를 표시한다. 기준 전압을 $V_{\mathrm{REF}}$라 하면 1 LSB는 $V_{\mathrm{REF}} / 4096$, LED 1단계는 $V_{\mathrm{REF}} / 256$이다.
+   - 설계는 수신 워드의 하위 12비트를 `sample`로 저장하고 상위 8비트 `sample[11:4]`를 LED에 표시한다. 같은 명령 형식을 쓰는 AD79x8 계열에서 12비트 칩(AD7928)은 [11:0] 전체가, 보드에 실린 8비트 칩 AD7908은 [11:4]가 변환값이고 [3:0]은 0이므로, LED에 AD7908의 8비트 변환값(0~255)이 그대로 표시된다. 기준 전압을 $V_{\mathrm{REF}}$라 하면 LED 1단계는 $V_{\mathrm{REF}} / 256$이다.
+   - 교재에 따르면 ch0에는 CdS 조도 센서, ch1에는 가변저항이 연결되어 있다.
 
 ---
 
@@ -85,7 +86,10 @@ STM32_1 주차의 FPGA 교재 실습으로, 50 MHz 클록에 동기화된 세 �
 | `adc/` | `adc.v` | 설계 최상위(Design Top). 프레임을 연속으로 시작하고 수신 하위 12비트를 `sample`, 상위 8비트를 `led_out`으로 출력 |
 | `adc/` | `tb_adc.sv` | 시뮬레이션 최상위(`tb`). ADC 직렬 응답 모델로 3개 프레임의 명령·채널·수신값·LED·리셋 자기 검증 |
 | `adc/` | `adc.gtkw` | GTKWave 신호 배치(`cs_n`, `sclk`, `mosi`, `miso`, `bit_index`, `sample`, `led`) |
+| `adc/` | `adc_board.v` | 보드 시연용 최상위. `sample`·`data_valid`를 내부에 두고 채널 선택·SPI 4선·LED만 연결 |
 | `constraints/` | `piano.xdc` | 피아노 보드 핀 제약(클록 B6, 키패드 1~8, 리셋 *, 피에조 Y21) |
+| `constraints/` | `traffic.xdc` | 신호등 보드 핀 제약(교재 핀 표: 차량·좌회전·보행자 LED 24개, 리셋 SW_1, 점멸 SW_2) |
+| `constraints/` | `adc.xdc` | ADC 보드 핀 제약(AD7908 SPI H3·H5·J6·H7, 채널 선택 DIP 0~2, LED 8개) |
 | `tools/` | `vivado_build.tcl` | Vivado 프로젝트 생성 → XSim 시뮬레이션 → 합성·구현·비트스트림 |
 | 루트 | `run_sim.bat` | `iverilog -g2012` 컴파일 → `vvp` 실행 → (옵션) GTKWave 실행 |
 | 루트 | `capture_wave.ps1` | GTKWave 창을 띄워 전체·확대 파형을 `evidence/vscode/`에 PNG로 저장 |
@@ -189,9 +193,10 @@ TB 안의 ADC 모델은 `cs_n` 하강 에지에서 프레임을 시작하고, SC
 
 ### 하드웨어 환경
 - **장비**: Combo II-DLD (Spartan-7 `xc7s75fgga484-1`), 50 MHz 클록
-- **설계 최상위 모듈**: `piano` / `traffic` / `adc` (보드에 올릴 때는 `tb_*.sv`를 제외하고, `CLK_HZ`는 기본값 50,000,000, ADC `HALF_CYCLES`는 기본값 25 사용)
+- **설계 최상위 모듈**: `piano` / `traffic` / `adc_board`(ADC) (보드에 올릴 때는 `tb_*.sv`를 제외하고, `CLK_HZ`는 기본값 50,000,000, ADC `HALF_CYCLES`는 기본값 25 사용)
 - **피아노 핀 ([constraints/piano.xdc](../../constraints/piano.xdc))**: 클록 `clk_50mhz` = B6, 피에조 `piezo` = Y21(Lab3 피에조 실습과 같음), 음 키 `key[7:0]` = 키패드 1~8(K4, N8, N4, N1, P6, N6, L5, J2 → 도 레 미 파 솔 라 시 도), 리셋 `rst_p` = 키패드 `*`(L7). 키패드 핀은 Lab2 키패드 실습과 같다. Vivado 2026.1에서 시뮬레이션 PASS 후 합성·구현·비트스트림까지 확인했다(WNS +14.284 ns, WHS +0.265 ns, LUT 646개, 레지스터 43개). LUT가 많은 것은 반주기 계산 `CLK_HZ / (2 × 주파수)`가 32비트 나눗셈 회로로 합성되기 때문이다.
-- **신호등·ADC 핀**: 신호등 모듈 LED(차량 4방향 × 빨강·노랑·초록·좌회전, 보행자 4방향 × 빨강·초록)와 외부 ADC 칩의 SCLK·CS·DIN·DOUT 핀은 실습 자료에 XDC가 없으므로 교재와 장비 핀맵을 보고 지정한다. 클록 B6, LED 8개(L4~N5), DIP 스위치(U4, V4, W1 …)는 이전 실습과 같은 핀을 쓴다.
+- **신호등 핀 ([constraints/traffic.xdc](../../constraints/traffic.xdc))**: 장비 교재의 신호등 핀 표를 따른다. 인덱스 [3]·[2]·[1]·[0]이 남(S)·북(N)·서(W)·동(E)이며, 예: `led_green` = E16·C16·A20·E11, `led_red` = B13·G14·C17·C12, `led_yellow` = L18·A14·C18·D13, `led_left` = F15·D15·C19·F10, `led_walk_green` = E19·F12·A16·G11, `led_walk_red` = A19·G13·E18·C11. 리셋 `rst_p` = 키패드 SW_1(K4), 점멸 모드 `flicker` = 키패드 SW_2(N8, 누르고 있는 동안 점멸). 비트스트림 생성 결과 WNS +15.033 ns, WHS +0.247 ns, LUT 32개, 레지스터 32개.
+- **ADC 핀 ([constraints/adc.xdc](../../constraints/adc.xdc))**: AD7908의 SPI_AD(CS) = H3, SPI_DIN = H5, SPI_DOUT = J6, SPI_SCK = H7. 채널 선택 `add_sel[2:0]` = DIP 스위치 0~2(U4·V4·W1), 결과 `led_out[7:0]` = LED1~LED8(L4~N5), 리셋 = 키패드 SW_1(K4). 비트스트림 생성 결과 WNS +14.862 ns, WHS +0.178 ns, LUT 57개, 레지스터 67개.
 - **입력 조건**: `note_select`는 키 입력이 HIGH 활성이고 안정된(떨림이 없는) 신호라고 가정한다. 보드 키패드 버튼이 LOW 활성이면 반전해서 연결하고, 필요하면 이전 실습의 동기화·디바운스 회로를 앞단에 둔다. 신호등 LED도 출력 1이 논리적 켜짐이므로 장비 LED 극성에 맞춰 연결한다.
 
 ### 보드 관찰 절차
@@ -201,5 +206,5 @@ TB 안의 ADC 모델은 `cs_n` 하강 에지에서 프레임을 시작하고, SC
 4. **신호등**: `traffic`을 최상위로 바꿔 다운로드한다. 리셋 후 direction 0의 차량 초록(+좌회전)이 11초, 노랑이 2초 켜진 뒤 다음 방향으로 넘어가는지 스톱워치로 측정하고, 네 방향 한 바퀴가 52초인지 확인한다.
 5. 보행자 초록이 처음 4초 동안 켜져 있다가 다음 7초 동안 1초 주기로 점멸하는지 확인한다.
 6. `flicker` 입력을 1로 두었을 때 노랑과 보행자 빨강이 함께 1 Hz로 점멸하고, 0으로 되돌리면 처음 방향부터 다시 시작하는지 확인한다. 각 동작을 사진·영상으로 기록한다.
-7. **ADC**: `adc`를 최상위로 다운로드하고, 채널 선택 스위치를 ADC IN1 가변저항이 연결된 채널에 맞춘다. 가변저항을 0 V 쪽에서 끝까지 돌리면서 LED 8개(`sample[11:4]`)가 0000_0000에서 1111_1111 쪽으로 커지는지 확인한다.
+7. **ADC**: `adc_board.bit`를 다운로드한다. DIP 스위치 0만 ON(ch1, 가변저항)으로 두고 가변저항을 끝에서 끝까지 돌리면서 LED 8개가 0000_0000에서 1111_1111 쪽으로 커지는지 확인한다. 스위치를 모두 OFF(ch0, CdS)로 바꾸고 센서를 손으로 가리거나 빛을 비추며 LED 값이 바뀌는지 확인한다.
 8. 채널을 바꾸면 다음 프레임(약 16 µs 뒤)부터 해당 채널 값으로 바뀌는지 확인하고, 가능하면 오실로스코프로 SCLK 1 MHz와 CS 프레임 길이 16 µs를 측정한다.
