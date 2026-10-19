@@ -8,7 +8,8 @@ create_clock -name clk_50mhz -period 20.000 [get_ports clk_50mhz]
 # 리셋: 키패드 SW_1
 set_property PACKAGE_PIN K4 [get_ports rst_p]
 
-# 채널 선택: DIP 스위치 0~2 (모두 OFF = ch0 CdS, 스위치 0만 ON = ch1 가변저항)
+# 채널 선택: 보드 DIP8(add_sel[0])·DIP7([1])·DIP6([2]) (Lab1 가산기와 같은 핀)
+# 모두 OFF = ch0 CdS, DIP8만 ON = ch1 가변저항
 set_property PACKAGE_PIN U4 [get_ports {add_sel[0]}]
 set_property PACKAGE_PIN V4 [get_ports {add_sel[1]}]
 set_property PACKAGE_PIN W1 [get_ports {add_sel[2]}]

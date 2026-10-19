@@ -90,7 +90,7 @@ STM32_1 주차의 FPGA 교재 실습으로, 50 MHz 클록에 동기화된 세 �
 | `adc/` | `adc_board.v` | 보드 시연용 최상위. `sample`·`data_valid`를 내부에 두고 채널 선택·SPI 4선·LED만 연결 |
 | `constraints/` | `piano.xdc` | 피아노 보드 핀 제약(클록 B6, 키패드 1~8, 리셋 *, 피에조 Y21) |
 | `constraints/` | `traffic.xdc` | 신호등 보드 핀 제약(교재 핀 표: 차량·좌회전·보행자 LED 24개, 리셋 SW_1, 점멸 SW_2) |
-| `constraints/` | `adc.xdc` | ADC 보드 핀 제약(AD7908 SPI H3·H5·J6·H7, 채널 선택 DIP 0~2, LED 8개) |
+| `constraints/` | `adc.xdc` | ADC 보드 핀 제약(AD7908 SPI H3·H5·J6·H7, 채널 선택 DIP6~8, LED 8개) |
 | `tools/` | `vivado_build.tcl` | Vivado 프로젝트 생성 → XSim 시뮬레이션 → 합성·구현·비트스트림 |
 | 루트 | `run_sim.bat` | `iverilog -g2012` 컴파일 → `vvp` 실행 → (옵션) GTKWave 실행 |
 | 루트 | `capture_wave.ps1` | GTKWave 창을 띄워 전체·확대 파형을 `evidence/vscode/`에 PNG로 저장 |
@@ -198,7 +198,7 @@ TB 안의 ADC 모델은 AD7908 데이터시트 타이밍에 맞춰 수정했다.
 - **설계 최상위 모듈**: `piano` / `traffic` / `adc_board`(ADC) (보드에 올릴 때는 `tb_*.sv`를 제외하고, `CLK_HZ`는 기본값 50,000,000, ADC `HALF_CYCLES`는 기본값 25 사용)
 - **피아노 핀 ([constraints/piano.xdc](../../constraints/piano.xdc))**: 클록 `clk_50mhz` = B6, 피에조 `piezo` = Y21(Lab3 피에조 실습과 같음), 음 키 `key[7:0]` = 키패드 1~8(K4, N8, N4, N1, P6, N6, L5, J2 → 도 레 미 파 솔 라 시 도), 리셋 `rst_p` = 키패드 `*`(L7). 키패드 핀은 Lab2 키패드 실습과 같다. Vivado 2026.1에서 시뮬레이션 PASS 후 합성·구현·비트스트림까지 확인했다(WNS +14.284 ns, WHS +0.265 ns, LUT 646개, 레지스터 43개). LUT가 많은 것은 반주기 계산 `CLK_HZ / (2 × 주파수)`가 32비트 나눗셈 회로로 합성되기 때문이다.
 - **신호등 핀 ([constraints/traffic.xdc](../../constraints/traffic.xdc))**: 장비 교재의 신호등 핀 표를 따른다. 인덱스 [3]·[2]·[1]·[0]이 남(S)·북(N)·서(W)·동(E)이며, 예: `led_green` = E16·C16·A20·E11, `led_red` = B13·G14·C17·C12, `led_yellow` = L18·A14·C18·D13, `led_left` = F15·D15·C19·F10, `led_walk_green` = E19·F12·A16·G11, `led_walk_red` = A19·G13·E18·C11. 리셋 `rst_p` = 키패드 SW_1(K4), 점멸 모드 `flicker` = 키패드 SW_2(N8, 누르고 있는 동안 점멸). 비트스트림 생성 결과 WNS +15.033 ns, WHS +0.247 ns, LUT 32개, 레지스터 32개.
-- **ADC 핀 ([constraints/adc.xdc](../../constraints/adc.xdc))**: AD7908의 SPI_AD(CS) = H3, SPI_DIN = H5, SPI_DOUT = J6, SPI_SCK = H7. 채널 선택 `add_sel[2:0]` = DIP 스위치 0~2(U4·V4·W1), 결과 `led_out[7:0]` = LED1~LED8(L4~N5), 리셋 = 키패드 SW_1(K4). 타이밍 수정 후 비트스트림 생성 결과 WNS +15.290 ns, WHS +0.169 ns.
+- **ADC 핀 ([constraints/adc.xdc](../../constraints/adc.xdc))**: AD7908의 SPI_AD(CS) = H3, SPI_DIN = H5, SPI_DOUT = J6, SPI_SCK = H7. 채널 선택 `add_sel[2:0]` = 보드 DIP6·DIP7·DIP8(W1·V4·U4, `add_sel[0]` = DIP8), 결과 `led_out[7:0]` = LED1~LED8(L4~N5), 리셋 = 키패드 SW_1(K4). 타이밍 수정 후 비트스트림 생성 결과 WNS +15.290 ns, WHS +0.169 ns.
 - **입력 조건**: `note_select`는 키 입력이 HIGH 활성이고 안정된(떨림이 없는) 신호라고 가정한다. 보드 키패드 버튼이 LOW 활성이면 반전해서 연결하고, 필요하면 이전 실습의 동기화·디바운스 회로를 앞단에 둔다. 신호등 LED도 출력 1이 논리적 켜짐이므로 장비 LED 극성에 맞춰 연결한다.
 
 ### 보드 관찰 절차
@@ -208,5 +208,5 @@ TB 안의 ADC 모델은 AD7908 데이터시트 타이밍에 맞춰 수정했다.
 4. **신호등**: `traffic`을 최상위로 바꿔 다운로드한다. 리셋 후 direction 0의 차량 초록(+좌회전)이 11초, 노랑이 2초 켜진 뒤 다음 방향으로 넘어가는지 스톱워치로 측정하고, 네 방향 한 바퀴가 52초인지 확인한다.
 5. 보행자 초록이 처음 4초 동안 켜져 있다가 다음 7초 동안 1초 주기로 점멸하는지 확인한다.
 6. `flicker` 입력을 1로 두었을 때 노랑과 보행자 빨강이 함께 1 Hz로 점멸하고, 0으로 되돌리면 처음 방향부터 다시 시작하는지 확인한다. 각 동작을 사진·영상으로 기록한다.
-7. **ADC**: `adc_board.bit`를 다운로드한다. DIP 스위치 0만 ON(ch1, 가변저항)으로 두고 가변저항을 끝에서 끝까지 돌리면서 LED 8개가 0000_0000에서 1111_1111 쪽으로 커지는지 확인한다. 스위치를 모두 OFF(ch0, CdS)로 바꾸고 센서를 손으로 가리거나 빛을 비추며 LED 값이 바뀌는지 확인한다.
+7. **ADC**: `adc_board.bit`를 다운로드한다. DIP8만 ON(ch1, 가변저항)으로 두고 가변저항을 끝에서 끝까지 돌리면서 LED 8개가 0000_0000에서 1111_1111 쪽으로 커지는지 확인한다. DIP6~8을 모두 OFF(ch0, CdS)로 바꾸고 센서를 손으로 가리거나 빛을 비추며 LED 값이 바뀌는지 확인한다.
 8. 채널을 바꾸면 다음 프레임(약 16 µs 뒤)부터 해당 채널 값으로 바뀌는지 확인하고, 가능하면 오실로스코프로 SCLK 1 MHz와 CS 프레임 길이 16 µs를 측정한다.
