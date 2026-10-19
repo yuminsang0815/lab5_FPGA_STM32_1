@@ -14,17 +14,26 @@ module tb;
     reg [15:0] reply=16'hA5C3;
     reg [2:0] frame_channel;
     integer bit_no,received_bits,frames=0;
-    // ADC 모델: 하강 에지에서 응답 비트 준비, 상승 에지에서 명령 수신.
+    realtime last_mosi_change=0;
+    // [보드 수정] AD7908 데이터시트 타이밍으로 바꾼 ADC 모델:
+    // CS 하강에서 첫 비트, 이후 SCLK 하강 에지마다 다음 DOUT 비트(접근 시간 3 ns),
+    // DIN은 SCLK 하강 에지에서 읽고 셋업 10 ns·홀드 5 ns를 검사한다.
+    always @(mosi) last_mosi_change=$realtime;
     always @(negedge cs_n) begin
         bit_no=15; received_bits=0; received_command=0; frame_channel=channel;
+        miso=reply[15];
     end
     always @(negedge sclk)
-        if(!cs_n) miso=reply[bit_no];
-    always @(posedge sclk)
-        if(!rst && received_bits<16) begin
+        if(!cs_n && !rst && received_bits<16) begin
+            if($realtime - last_mosi_change < 10) $fatal(1,"ADC DIN setup violation at bit %0d",received_bits);
             received_command={received_command[14:0],mosi};
             received_bits=received_bits+1;
             bit_no=bit_no-1;
+            #3 if(bit_no>=0) miso=reply[bit_no];
+        end
+    always @(negedge sclk)
+        if(!cs_n && !rst) begin
+            #5 if($realtime - last_mosi_change <= 5) $fatal(1,"ADC DIN hold violation at %0t",$realtime);
         end
     always @(posedge valid) begin
         #1;

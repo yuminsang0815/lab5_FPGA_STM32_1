@@ -55,7 +55,8 @@ STM32_1 주차의 FPGA 교재 실습으로, 50 MHz 클록에 동기화된 세 �
    - SCLK는 `HALF_CYCLES` 클록마다 반전하므로
      $$f_{\mathrm{SCLK}} = \frac{f_{\mathrm{clk}}}{2 \times \text{HALF\_CYCLES}} = \frac{50\text{ MHz}}{2 \times 25} = 1\text{ MHz}$$
    - 한 프레임은 16비트 × 2 × 25 = 800클록 = 16 µs이고, 프레임 사이 대기 1~2클록을 더하면 초당 약 62,000번 변환 결과를 읽는다.
-   - SCLK는 HIGH에서 대기하고, 하강 에지에서 FPGA가 명령 비트(MOSI = ADC DIN)를 내보내며, 상승 에지에서 ADC 출력(MISO = ADC DOUT)을 받는다. 비트 순서는 최상위 비트부터(MSB first)이다.
+   - SCLK는 HIGH에서 대기한다. AD7908 데이터시트에 따르면 ADC는 DIN을 SCLK **하강 에지**에서 읽고(셋업 10 ns, 홀드 수 ns 이상), DOUT도 하강 에지에서 다음 비트를 내보낸다(첫 비트는 CS 하강에서 나옴). 비트 순서는 최상위 비트부터(MSB first)이다.
+   - **보드 시연 중 수정**: 수업 원본 `serial_frame16`은 하강 에지와 같은 순간에 MOSI(= DIN)를 바꾸고 상승 에지에서 MISO를 읽었다. 보드에서 CdS(ch0)만 반응하고 채널 선택(ch1 가변저항)이 반영되지 않아 확인해 보니, DIN이 ADC가 읽는 순간에 바뀌어 홀드 시간을 지키지 못해 채널 선택 명령이 제대로 전달되지 않는 문제였다. MOSI는 **상승 에지에서 바꿔** 하강 에지에서 안정되게 하고, MISO는 **하강 에지 직전에 읽도록** 고쳤다.
    - 시뮬레이션은 `HALF_CYCLES = 2`(SCLK 12.5 MHz)로 줄여 한 프레임을 64클록(640 ns)으로 만든다.
 
 5. **ADC 명령 워드 (`adc_command`)**:
@@ -126,7 +127,7 @@ STM32_1 주차의 FPGA 교재 실습으로, 50 MHz 클록에 동기화된 세 �
 
 ### ADC (`HALF_CYCLES = 2`, 1비트 = 4클록 = 40 ns)
 
-TB 안의 ADC 모델은 `cs_n` 하강 에지에서 프레임을 시작하고, SCLK 하강 에지마다 응답 `16'hA5C3`을 최상위 비트부터 내보내며, SCLK 상승 에지마다 MOSI 명령 비트를 받는다.
+TB 안의 ADC 모델은 AD7908 데이터시트 타이밍에 맞춰 수정했다. `cs_n` 하강 에지에서 응답 `16'hA5C3`의 첫 비트를 내보내고, SCLK 하강 에지마다 MOSI 명령 비트를 받은 뒤 3 ns(접근 시간) 후 다음 응답 비트를 내보낸다. 명령을 받을 때 DIN 셋업 10 ns·홀드 5 ns를 검사한다. (원본 TB의 모델은 상승 에지에서 명령을 받아 실제 칩과 달랐고, 그래서 타이밍 문제를 잡지 못했다.)
 
 | 검사 순서 | 인가 자극 | 기대 결과 | 판정 기준 및 검증 의미 |
 |:---:|---|---|---|
@@ -164,7 +165,7 @@ TB 안의 ADC 모델은 `cs_n` 하강 에지에서 프레임을 시작하고, SC
 ### 정상 시뮬레이션 확인 – ADC
 - **[종료 로그](../../evidence/vscode/adc_sim_log.txt)**: `PASS ADC: 3 serial frames, command bits, sample, reset`, 종료 시각 `2016000 ps (2016 ns)`
 - **[전체 파형](../../evidence/vscode/adc_wave_full.png)**, **[확대 파형](../../evidence/vscode/adc_wave_zoom.png)**:
-  - 리셋 해제 후 `cs_n`이 LOW가 되며 첫 프레임이 시작되고, `sclk`가 4클록(40 ns) 주기로 16번 토글하는 동안 `bit_index`가 15 → 0으로 줄어든다.
+  - 리셋 해제 후 `cs_n`이 LOW가 되며 첫 프레임이 시작되고, `sclk`가 4클록(40 ns) 주기로 16번 토글하는 동안 `bit_index`가 15 → 0으로 줄어든다. 수정 후에는 `mosi`가 `sclk` 상승 에지에서만 바뀌어 하강 에지 앞뒤로 20 ns씩 안정된다.
   - `mosi`로 나간 비트가 TB의 `received_command`에 한 비트씩 쌓여 프레임 끝에 `AB70`(channel 2 명령)이 된다.
   - 같은 프레임에서 `miso`로 받은 `A5C3` 중 하위 12비트 `5C3`이 `valid` 펄스와 함께 `sample`에 저장되고, `led`는 상위 8비트 `5C`가 된다.
   - 다음 프레임부터 channel이 5로 바뀌어 명령이 `B770`이 된다.
@@ -185,7 +186,8 @@ TB 안의 ADC 모델은 `cs_n` 하강 에지에서 프레임을 시작하고, SC
 | 정상 실행 (ADC) | `command = {3'b101, channel, 2'b11, 1'b0, 3'b111, 4'b0000}` | 3프레임 통과 | `PASS ADC: ...` (2016 ns 종료) | 정상 통과 |
 | 고장 주입 5 | 명령의 `3'b111`을 `3'b110`으로 변경 (코딩 비트 0) | 명령 워드 불일치 | `FATAL: ADC command channel=2 cmd=ab60` (686 ns) | 첫 프레임 끝에서 명령 비트 검출 |
 | 고장 주입 6 | `sample <= rx_word[12:1]`로 1비트 밀어서 저장 | 수신값 불일치 | `FATAL: ADC sample` (686 ns) | 수신 비트 정렬 검사 동작 확인 |
-| 원복 복구 | 원본 코드 사용 | 세 실습 모두 통과 | 세 `PASS` 메시지 재확인 | 정상 확인 |
+| 원본 비교 (ADC) | 수업 원본 `serial_frame16`(하강 에지에서 MOSI 변경)을 데이터시트 타이밍 모델로 실행 | DIN 홀드 위반 | `FATAL: ADC DIN hold violation at 100000` (100 ns) | 보드에서 채널 선택이 안 된 원인을 시뮬레이션으로 재현 |
+| 원복 복구 | 원본 코드(ADC는 수정 코드) 사용 | 세 실습 모두 통과 | 세 `PASS` 메시지 재확인 | 정상 확인 |
 
 ---
 
@@ -196,7 +198,7 @@ TB 안의 ADC 모델은 `cs_n` 하강 에지에서 프레임을 시작하고, SC
 - **설계 최상위 모듈**: `piano` / `traffic` / `adc_board`(ADC) (보드에 올릴 때는 `tb_*.sv`를 제외하고, `CLK_HZ`는 기본값 50,000,000, ADC `HALF_CYCLES`는 기본값 25 사용)
 - **피아노 핀 ([constraints/piano.xdc](../../constraints/piano.xdc))**: 클록 `clk_50mhz` = B6, 피에조 `piezo` = Y21(Lab3 피에조 실습과 같음), 음 키 `key[7:0]` = 키패드 1~8(K4, N8, N4, N1, P6, N6, L5, J2 → 도 레 미 파 솔 라 시 도), 리셋 `rst_p` = 키패드 `*`(L7). 키패드 핀은 Lab2 키패드 실습과 같다. Vivado 2026.1에서 시뮬레이션 PASS 후 합성·구현·비트스트림까지 확인했다(WNS +14.284 ns, WHS +0.265 ns, LUT 646개, 레지스터 43개). LUT가 많은 것은 반주기 계산 `CLK_HZ / (2 × 주파수)`가 32비트 나눗셈 회로로 합성되기 때문이다.
 - **신호등 핀 ([constraints/traffic.xdc](../../constraints/traffic.xdc))**: 장비 교재의 신호등 핀 표를 따른다. 인덱스 [3]·[2]·[1]·[0]이 남(S)·북(N)·서(W)·동(E)이며, 예: `led_green` = E16·C16·A20·E11, `led_red` = B13·G14·C17·C12, `led_yellow` = L18·A14·C18·D13, `led_left` = F15·D15·C19·F10, `led_walk_green` = E19·F12·A16·G11, `led_walk_red` = A19·G13·E18·C11. 리셋 `rst_p` = 키패드 SW_1(K4), 점멸 모드 `flicker` = 키패드 SW_2(N8, 누르고 있는 동안 점멸). 비트스트림 생성 결과 WNS +15.033 ns, WHS +0.247 ns, LUT 32개, 레지스터 32개.
-- **ADC 핀 ([constraints/adc.xdc](../../constraints/adc.xdc))**: AD7908의 SPI_AD(CS) = H3, SPI_DIN = H5, SPI_DOUT = J6, SPI_SCK = H7. 채널 선택 `add_sel[2:0]` = DIP 스위치 0~2(U4·V4·W1), 결과 `led_out[7:0]` = LED1~LED8(L4~N5), 리셋 = 키패드 SW_1(K4). 비트스트림 생성 결과 WNS +14.862 ns, WHS +0.178 ns, LUT 57개, 레지스터 67개.
+- **ADC 핀 ([constraints/adc.xdc](../../constraints/adc.xdc))**: AD7908의 SPI_AD(CS) = H3, SPI_DIN = H5, SPI_DOUT = J6, SPI_SCK = H7. 채널 선택 `add_sel[2:0]` = DIP 스위치 0~2(U4·V4·W1), 결과 `led_out[7:0]` = LED1~LED8(L4~N5), 리셋 = 키패드 SW_1(K4). 타이밍 수정 후 비트스트림 생성 결과 WNS +15.290 ns, WHS +0.169 ns.
 - **입력 조건**: `note_select`는 키 입력이 HIGH 활성이고 안정된(떨림이 없는) 신호라고 가정한다. 보드 키패드 버튼이 LOW 활성이면 반전해서 연결하고, 필요하면 이전 실습의 동기화·디바운스 회로를 앞단에 둔다. 신호등 LED도 출력 1이 논리적 켜짐이므로 장비 LED 극성에 맞춰 연결한다.
 
 ### 보드 관찰 절차
