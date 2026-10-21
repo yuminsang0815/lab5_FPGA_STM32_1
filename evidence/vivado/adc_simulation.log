@@ -1,0 +1,41 @@
+#-----------------------------------------------------------
+# xsim v2026.1 (64-bit)
+# SW Build 6511674 on Tue Jun 16 11:02:23 MDT 2026
+# IP Build 6504888 on Tue Jun 09 09:05:25 MDT 2026
+# SharedData Build 6501428 on Mon Jun 08 17:34:18 MDT 2026
+# Start of session at: Mon Oct 19 14:51:09 2026
+# Process ID         : 18628
+# Current directory  : C:/Users/a2391/lab5_FPGA_STM32_1/vivado/adc/adc.sim/sim_1/behav/xsim
+# Command line       : xsim.exe -log simulate.log -mode tcl -source {xsim.dir/tb_behav/xsim_script.tcl}
+# Log file           : C:/Users/a2391/lab5_FPGA_STM32_1/vivado/adc/adc.sim/sim_1/behav/xsim/simulate.log
+# Journal file       : C:/Users/a2391/lab5_FPGA_STM32_1/vivado/adc/adc.sim/sim_1/behav/xsim\xsim.jou
+# Running On         : BOOK-OPT2TNA3HM
+# Platform           : Windows 11
+# Operating System   : 26200
+# Processor Detail   : Intel(R) Core(TM) Ultra 5 226V
+# CPU Frequency      : 3110 MHz
+# CPU Physical cores : 8
+# CPU Logical cores  : 8
+# Host memory        : 16687 MB
+# Swap memory        : 7516 MB
+# Total Virtual      : 24203 MB
+# Available Virtual  : 5436 MB
+#-----------------------------------------------------------
+source xsim.dir/tb_behav/xsim_script.tcl
+# xsim {tb_behav} -autoloadwcfg -tclbatch {tb.tcl} -key {Behavioral:sim_1:Functional:tb}
+Time resolution is 1 ps
+source tb.tcl
+## set curr_wave [current_wave_config]
+## if { [string length $curr_wave] == 0 } {
+##   if { [llength [get_objects]] > 0} {
+##     add_wave /
+##     set_property needs_save false [current_wave_config]
+##   } else {
+##      send_msg_id Add_Wave-1 WARNING "No top level signals found. Simulator will start without a wave window. If you want to open a wave window go to 'File->New Waveform Configuration' or type 'create_wave_config' in the TCL console."
+##   }
+## }
+## run all
+PASS ADC: 3 serial frames, command bits, sample, reset
+$finish called at time : 2016 ns : File "C:/Users/a2391/lab5_FPGA_STM32_1/adc/tb_adc.sv" Line 55
+## quit
+INFO: [Common 17-206] Exiting xsim at Mon Oct 19 14:51:11 2026...
